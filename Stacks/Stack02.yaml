@@ -1,0 +1,139 @@
+Description: My stack CloudFormation. Levi Rosal.
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+  LoadBalancerConsul:
+    Type: String
+    Default: ConsulBalancer    
+  KeyName:
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Default: gmail.key
+  ImageVaultID:
+    Type: 'AWS::EC2::Image::Id'
+    Default: ami-0e9a0a6ce12d0d8a4
+  ImageConsulID:
+    Type: 'AWS::EC2::Image::Id'
+    Default: ami-0809fd6f710f84ece
+  VpcId:
+    Type: 'AWS::EC2::VPC::Id'
+    Default: vpc-78a50102
+  SubnetCV:
+    Type: 'AWS::EC2::Subnet::Id'
+    Default: subnet-e693d1e9
+  SecurityPanGroupID:
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    Default: sg-04636064a1bc01677
+Resources:
+  Vault01:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId:
+        Ref: ImageVaultID
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyName
+      SecurityGroupIds:
+      - Ref: SecurityPanGroupID
+      Tags:
+      - 
+        Key: Name 
+        Value: Vault
+    Vault02:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId:
+        Ref: ImageVaultID
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyName
+      SecurityGroupIds:
+      - Ref: SecurityPanGroupID
+      Tags:
+      - 
+        Key: Name 
+        Value: Vault
+
+  LoadBalancerVault:
+    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
+    Properties:
+      ConnectionSettings:
+        IdleTimeout: 5
+      Instances:
+      - Ref: Vault01
+      - Ref: Vault02
+      LoadBalancerName: VaultBalancer
+      Listeners:
+      -
+        InstancePort: 8200
+        InstanceProtocol: http
+        LoadBalancerPort: 8200
+        Protocol: http
+      Scheme: internet-facing
+      SecurityGroups:
+      - Ref: SecurityPanGroupID
+      Subnets: 
+      - Ref: SubnetCV
+
+  AutoScalingConfig:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      ImageId: 
+        Ref: ImageConsulID
+      InstanceMonitoring: true
+      InstanceType:
+        Ref: InstanceType
+      KeyName: 
+        Ref: KeyName      
+      LaunchConfigurationName: CFconsul
+      SecurityGroups:
+        - Ref: SecurityPanGroupID
+  
+  AutoScalingConsul:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: AutoScalingConsulCF
+      HealthCheckGracePeriod: 60
+      HealthCheckType: EC2
+      LaunchConfigurationName: 
+        Ref: AutoScalingConfig
+      MaxSize: 3
+      MinSize: 3
+      LoadBalancerNames: 
+      - Ref: LoadBalancerConsul
+      TerminationPolicies:
+      - 'OldestInstance'
+      - 'Default'
+      VPCZoneIdentifier:
+      - Ref: SubnetCV
+
+  ConsulPolicy: 
+    Type: "AWS::AutoScaling::ScalingPolicy"
+    Properties: 
+      AdjustmentType: ExactCapacity
+      AutoScalingGroupName: 
+       Ref: AutoScalingConsul
+      Cooldown: 45
+      ScalingAdjustment: 1
+
+  ConsulCPUAlarmHigh: 
+    Type: "AWS::CloudWatch::Alarm"
+    Properties: 
+      AlarmDescription: "Scale-up if CPU > 60% for 2 minute"
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: "AWS/EC2"
+      Period: 60
+      Statistic: Average
+      Threshold: 60
+      AlarmActions: 
+       - 
+        Ref: ConsulPolicy
+      Dimensions: 
+       - 
+        Name: AutoScalingGroupName
+        Value:
+          Ref: AutoScalingConsul
+      ComparisonOperator: GreaterThanThreshold

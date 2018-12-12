@@ -1,0 +1,52 @@
+Description: My primary stack CloudFormation. Levi Rosal.
+Parameters:
+  VpcId:
+    Type: 'AWS::EC2::VPC::Id'
+    Default: vpc-78a50102
+  SubnetCV:
+    Type: 'AWS::EC2::Subnet::Id'
+    Default: subnet-e693d1e9
+
+Resources:
+  SecurityPanGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: PangeiaSecurity
+      GroupDescription: Grupo criado pelo CloudFormation
+      SecurityGroupIngress:
+      -
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 200.129.63.2/32
+      -
+        IpProtocol: -1
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 200.129.63.2/32         
+      -
+        IpProtocol: tcp
+        FromPort: 8200
+        ToPort: 8200
+        CidrIp: 200.129.63.2/32
+       
+      VpcId:
+        Ref: VpcId
+
+  LoadBalancerConsul:
+    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
+    Properties:
+      ConnectionSettings:
+        IdleTimeout: 5
+      LoadBalancerName: ConsulBalancer
+      Listeners:
+      -
+        InstancePort: 8301
+        InstanceProtocol: tcp
+        LoadBalancerPort: 8301
+        Protocol: tcp
+      Scheme: internal
+      SecurityGroups:
+      - Ref: SecurityPanGroup
+      Subnets: 
+      - Ref: SubnetCV
