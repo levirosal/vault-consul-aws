@@ -1,1 +1,15 @@
 # vault-consul-aws
+
+# CloudFormation Files
+
+Stack for creating the structure in AWS required for Vault / Consul integration
+
+Stack01.yaml = Creation of the internal Load Balancer(Vault => Consul) and Security Group,
+
+Stack02.yaml = Creation of Vault instances, external Load Balancer for Vault instances, Auto Scaling Consul instances, Policies of CloudWatch and Auto Scaling Consul.
+
+# How to Make
+
+Create and run Stack01.yaml
+
+Create and run Stack02.yaml
